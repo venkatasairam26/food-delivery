@@ -104,5 +104,24 @@ app.get('/', authToken, async (request, response) => {
     response.send(products);
 })
 
+app.get('/cart/', authToken, async (request, response) => {
+    const { email } = request.user;
+    const getCartQuery = `
+    SELECT * FROM cart WHERE username = '${email}';`
+    const cartItems = await dataBase.all(getCartQuery);
+    response.status(200);
+    response.send(cartItems);
+})
+app.post('/cart/', authToken, async (request, response) => {
+    const { username } = request.user;
+    const { productId, quantity } = request.body;
+    const addToCartQuery = `
+    INSERT INTO cart (username, productId, quantity)
+    VALUES ('${username}', ${productId}, ${quantity});`
+    await dataBase.run(addToCartQuery);
+    response.status(200);
+    response.send('Item added to cart');
+})
+
 
 
