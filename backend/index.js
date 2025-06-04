@@ -153,4 +153,12 @@ app.delete('/cart/:cartId', authToken, async (request, response) => {
     response.send('Item removed from cart');
 })
 
+app.get('/profile', authToken, async (request, response) => {
+    const { email } = request.user;
+    const getUserProfileQuery = `
+    SELECT username, email FROM users WHERE email = '${email}';`
+    const userProfile = await dataBase.get(getUserProfileQuery);
+    response.status(200);
+    response.send(userProfile);
+})
 
