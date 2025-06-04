@@ -52,24 +52,23 @@ const authToken = (request, response, next) => {
 
 app.post('/register', async (request, response) => {
     const { username, password, email } = request.body;
-    try{
+    try {
         const getUserQuery = `
 SELECT * FROM users WHERE email = '${email}';`
-    const dbUser = await dataBase.get(getUserQuery);
-    if (dbUser === undefined) {
-        const hashPassword = await bcrypt.hash(password, 10);
-        const createUserQuery = `
+        const dbUser = await dataBase.get(getUserQuery);
+        if (dbUser === undefined) {
+            const hashPassword = await bcrypt.hash(password, 10);
+            const createUserQuery = `
     INSERT INTO users (username,password,email)
     VALUES ('${username}','${hashPassword}','${email}');`
-        await dataBase.run(createUserQuery);
-        response.status(200);
-        response.send('User created successfully');
-    } else {
-        // console.log(dbUser)
-        response.status(400);
-        response.send('User already exists');
-    }
-    }catch (error) {
+            await dataBase.run(createUserQuery);
+            response.status(200);
+            response.send('User created successfully');
+        } else {
+            response.status(400);
+            response.send('User already exists');
+        }
+    } catch (error) {
         console.error(`Error during registration: ${error.message}`);
         response.status(500).send('Internal Server Error');
     }
@@ -87,7 +86,7 @@ app.post('/login', async (request, response) => {
     else {
         const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
         if (isPasswordMatched === true) {
-            const payload = { username: dbUser.username };
+            const payload = { email: dbUser.email };
             const jwtToken = jwt.sign(payload, 'secretKey');
             response.send({ jwtToken });
         } else {
@@ -104,24 +103,54 @@ app.get('/', authToken, async (request, response) => {
     response.send(products);
 })
 
-app.get('/cart/', authToken, async (request, response) => {
+app.get('/cart', authToken, async (request, response) => {
     const { email } = request.user;
-    const getCartQuery = `
-    SELECT * FROM cart WHERE username = '${email}';`
+    const getCartQuery = `SELECT cartId,cart.productId, products.name,products.price AS price, products.imgUrl, cart.quantity,cart.cartId
+    FROM products  JOIN cart ON products.productId = cart.productId WHERE email = '${email}' 
+    GROUP BY products.productId;`
     const cartItems = await dataBase.all(getCartQuery);
     response.status(200);
     response.send(cartItems);
 })
-app.post('/cart/', authToken, async (request, response) => {
-    const { username } = request.user;
+app.post('/cart', authToken, async (request, response) => {
+    const { email } = request.user;
     const { productId, quantity } = request.body;
-    const addToCartQuery = `
-    INSERT INTO cart (username, productId, quantity)
-    VALUES ('${username}', ${productId}, ${quantity});`
-    await dataBase.run(addToCartQuery);
-    response.status(200);
-    response.send('Item added to cart');
-})
+    const getCartItemQuery = `
+    SELECT * FROM cart WHERE email = '${email}' AND productId = ${productId};`
+    const existingCartItem = await dataBase.get(getCartItemQuery);
+    if (existingCartItem) {
+        const updateCartQuery = `
+        UPDATE cart SET quantity = quantity + ${quantity} WHERE email = '${email}' AND productId = ${productId};`
+        await dataBase.run(updateCartQuery);
+        response.status(200);
+        response.send('Item quantity updated in cart');
+        return;
+    } else if (quantity <= 0) {
+        response.status(400);
+        response.send('Invalid quantity');
+        return;
+    } else if (quantity > 10) {
+        response.status(400);
+        response.send('Quantity exceeds limit');
+        return;
+    } else {
+        const addToCartQuery = `
+    INSERT INTO cart (email, productId, quantity)
+    VALUES ('${email}', ${productId}, ${quantity});`
+        await dataBase.run(addToCartQuery);
+        response.status(200);
+        response.send('Item added to cart');
+    }
 
+})
+app.delete('/cart/:cartId', authToken, async (request, response) => {
+    const { cartId } = request.params;
+    console.log(`Cart ID to delete: ${cartId}`);
+    const deleteCartItemQuery = `
+    DELETE FROM cart WHERE cartId = ${cartId};`
+    await dataBase.run(deleteCartItemQuery);
+    response.status(200);
+    response.send('Item removed from cart');
+})
 
 
