@@ -86,7 +86,7 @@ app.get('/', authToken, async (req, res) => {
   res.status(200).send(products);
 });
 
-app.post('/cart', authToken, async (req, res) => {
+app.post('/cartIems', authToken, async (req, res) => {
   const { email } = req.user;
   const getCartQuery = `
     SELECT cart.cartId, cart.productId, products.name, products.price, products.imgUrl, cart.quantity
