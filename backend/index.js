@@ -86,7 +86,7 @@ app.get('/', authToken, async (req, res) => {
   res.status(200).send(products);
 });
 
-app.get('/cart', authToken, async (req, res) => {
+app.post('/cart', authToken, async (req, res) => {
   const { email } = req.user;
   const getCartQuery = `
     SELECT cart.cartId, cart.productId, products.name, products.price, products.imgUrl, cart.quantity
@@ -125,7 +125,7 @@ app.delete('/cart/:cartId', authToken, async (req, res) => {
   res.status(200).send('Item removed from cart');
 });
 
-app.get('/profile', authToken, async (req, res) => {
+app.post('/profile', authToken, async (req, res) => {
   const { email } = req.user;
   const getUserProfileQuery = `SELECT username, email FROM users WHERE email = ?`;
   const userProfile = await dataBase.get(getUserProfileQuery, [email]);
